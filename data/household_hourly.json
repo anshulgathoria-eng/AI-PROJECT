@@ -1,0 +1,21 @@
+{
+  "source_url": "https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption",
+  "citation": "Hebrail, G. & Berard, A. (2006). Individual Household Electric Power Consumption. UCI Machine Learning Repository.",
+  "doi": "https://doi.org/10.24432/C58K54",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "transformation": "Global_active_power converted to hourly kWh via mean kW times one hour, requiring at least 54/60 valid minutes. Other hours remain missing. Source local timestamps retained; no interpolation.",
+  "sha256": "3a1871cd8cb83b581940a482a21ad7c476fd484ff3aaa1ba57f9af3b93d90450",
+  "raw_sha256": "4259c9d7ece5dbee9ab8d53682baac68d791c864f0f64a52b4043cb3b90894b7",
+  "audit": {
+    "source": "household_power_consumption.txt",
+    "input_rows": 2075259,
+    "invalid_timestamps": 0,
+    "missing_or_invalid_power": 25979,
+    "duplicate_timestamps": 0,
+    "total_hours": 34589,
+    "usable_hours": 34143,
+    "excluded_hours": 446,
+    "min_coverage": 0.9
+  }
+}

@@ -82,3 +82,24 @@ The following server command started successfully:
 The application was opened in the Codex browser panel. Page execution and widget
 interactions were verified with Streamlit AppTest; no manual browser visual review
 is claimed.
+
+## Cloud dataset fix — 28 October 2026
+
+The deployed checkout lacked the ignored raw minute dataset. Added a committed
+203,855-byte `data/household_hourly.csv.gz` with JSON provenance and checksum.
+It preserves all 34,589 hourly bins, 34,143 usable targets, and 446 missing targets
+from the existing preprocessing pipeline. A parity test compared every column
+and timestamp against the original real-data loader with tolerance 1e-12.
+The source ZIP hash remains unchanged.
+
+The app prefers original minute data locally and uses the bundled real hourly
+aggregates in cloud checkouts. No network download or synthetic fallback is used.
+Attribution, the CC BY 4.0 license link, and transformation details appear in
+`data/README.md`, bundle metadata, and the dashboard's About section.
+
+Executed `.\.venv312\Scripts\python.exe -m pytest -q` after the change:
+**18 passed, 2 warnings in 66.44 seconds**, no skips. Both warnings arise from
+Streamlit's chart code using a deprecated Pandas argument. Tests include all
+dashboard pages with the raw file absent, forecast-horizon changes, finite
+forecasts from bundled data, checksum failure handling, and original/bundled
+data equivalence. This supersedes the earlier 14-test count above.

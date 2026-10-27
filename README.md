@@ -53,9 +53,31 @@ ZIP at the project root and run:
 The extractor inspects the archive for the expected filename, copies it to a fixed
 safe destination, verifies existing data rather than overwriting differing files,
 and checks the original archive's SHA-256 before and after extraction. Neither the
-archive nor extracted large dataset is included in Git. No download occurs at app
-startup. If the dataset is absent, the dashboard provides instructions while the
-graph simulations remain usable.
+archive nor extracted minute dataset is included in Git. The compact
+`data/household_hourly.csv.gz` and its JSON metadata **are included** so Streamlit
+Community Cloud can run forecasting without the original 133 MB file or an
+external download. The app prefers the original minute file locally and falls
+back to these real UCI hourly aggregates when that file is absent. Coverage,
+missing hours, and the original audit counts are preserved, and the bundle is
+checksum-verified on loading. It is not synthetic data.
+
+To rebuild the committed cloud data after extracting the original ZIP:
+
+```powershell
+.\.venv312\Scripts\python.exe scripts/build_hourly_bundle.py
+```
+
+Dataset attribution: Georges Hebrail and Alice Berard (2006), *Individual Household
+Electric Power Consumption*, UCI Machine Learning Repository,
+[DOI: 10.24432/C58K54](https://doi.org/10.24432/C58K54), licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The bundled data is an
+hourly aggregation using the documented 90% coverage policy. See `data/README.md`
+and `data/household_hourly.json` for the transformation and provenance.
+
+For Streamlit Community Cloud, select repository `anshulgathoria-eng/AI-PROJECT`,
+branch `master`, entrypoint `app.py`, and Python 3.12. No secrets or data upload
+are needed. If both the original and bundled data are absent, the dashboard
+provides instructions while graph simulations remain usable.
 
 ## Architecture and files
 

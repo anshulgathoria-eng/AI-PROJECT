@@ -1,9 +1,48 @@
 """Read UCI minute measurements and aggregate energy without filling across time."""
 from pathlib import Path
+import hashlib
+import json
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DATASET = ROOT / "data" / "household_power_consumption.txt"
+BUNDLED_DATASET = ROOT / "data" / "household_hourly.csv.gz"
+
+
+def resolve_dataset():
+    """Prefer the original local data; use the real hourly bundle in cloud checkouts."""
+    return DEFAULT_DATASET if DEFAULT_DATASET.is_file() or not BUNDLED_DATASET.is_file() else BUNDLED_DATASET
+
+
+def load_app_data(path):
+    path = Path(path)
+    if path.name != "household_hourly.csv.gz":
+        hourly, report = load_hourly_data(path)
+        return hourly, {**report, "representation": "Original minute measurements"}
+    metadata = json.loads(path.with_suffix("").with_suffix(".json").read_text(encoding="utf-8"))
+    with path.open("rb") as stream:
+        if hashlib.file_digest(stream, "sha256").hexdigest() != metadata["sha256"]:
+            raise ValueError("Bundled hourly dataset checksum mismatch. Restore the data files from GitHub.")
+    hourly = pd.read_csv(path, index_col="timestamp", parse_dates=["timestamp"])
+    if list(hourly.columns) != ["observed_minutes", "coverage", "energy_kwh"]:
+        raise ValueError("Invalid bundled hourly dataset columns.")
+    if (not isinstance(hourly.index, pd.DatetimeIndex) or hourly.index.hasnans
+            or not hourly.index.is_unique or not hourly.index.is_monotonic_increasing
+            or not hourly.index.equals(pd.date_range(hourly.index.min(), periods=len(hourly), freq="h"))):
+        raise ValueError("Bundled data must contain unique, continuous, sorted hourly timestamps.")
+    report = metadata["audit"]
+    counts, coverage, energy = hourly.observed_minutes, hourly.coverage, hourly.energy_kwh
+    valid = coverage >= report["min_coverage"]
+    if (not counts.between(0, 60).all() or not (counts % 1 == 0).all()
+            or not np.allclose(coverage, counts / 60)
+            or not energy.notna().equals(valid)
+            or not np.isfinite(energy.dropna()).all() or not energy.dropna().ge(0).all()
+            or len(hourly) != report["total_hours"] or int(valid.sum()) != report["usable_hours"]):
+        raise ValueError("Bundled hourly dataset does not match its coverage and audit metadata.")
+    return hourly, {**report, "source": str(path.resolve()),
+                    "representation": "Bundled hourly aggregate of real UCI data",
+                    "source_url": metadata["source_url"], "license": metadata["license"]}
 
 
 def load_hourly_data(path=DEFAULT_DATASET, min_coverage=0.9):

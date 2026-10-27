@@ -8,6 +8,7 @@ APP = Path(__file__).resolve().parents[1] / "app.py"
 
 def test_missing_dataset_keeps_simulation_available(monkeypatch, tmp_path):
     monkeypatch.setattr("data_loader.DEFAULT_DATASET", tmp_path / "missing.txt")
+    monkeypatch.setattr("data_loader.BUNDLED_DATASET", tmp_path / "missing.csv.gz")
     app = AppTest.from_file(APP, default_timeout=30).run()
     assert not app.exception
     assert any("dataset missing" in w.value for w in app.warning)
@@ -17,9 +18,12 @@ def test_missing_dataset_keeps_simulation_available(monkeypatch, tmp_path):
 
 
 @pytest.mark.integration
-def test_dashboard_pages_and_interactions():
-    if not DEFAULT_DATASET.exists():
+@pytest.mark.parametrize("representation", ["raw", "bundled"])
+def test_dashboard_pages_and_interactions(representation, monkeypatch, tmp_path):
+    if representation == "raw" and not DEFAULT_DATASET.exists():
         pytest.skip("Real UCI dataset is not installed")
+    if representation == "bundled":
+        monkeypatch.setattr("data_loader.DEFAULT_DATASET", tmp_path / "missing.txt")
     app = AppTest.from_file(APP, default_timeout=120).run()
     assert not app.exception
     assert app.success

@@ -6,4 +6,6 @@ pytest-cache-files-*/
 data/*
 !data/.gitkeep
 !data/README.md
+!data/household_hourly.csv.gz
+!data/household_hourly.json
 artifacts/

@@ -1,7 +1,7 @@
 """Launch with: python -m streamlit run app.py"""
 import matplotlib.pyplot as plt
 import streamlit as st
-from data_loader import DEFAULT_DATASET, load_hourly_data
+from data_loader import resolve_dataset, load_app_data
 from forecasting import train_and_evaluate, forecast_future
 from graph_algorithms import bfs_nearest_source
 from grid_simulation import NODES, ROUTING, analyze_failure
@@ -12,9 +12,9 @@ st.title("⚡ GridSense")
 st.caption("Household energy forecasting · simulated grid connectivity")
 
 
-@st.cache_data(show_spinner="Loading UCI minute observations…")
+@st.cache_data(show_spinner="Loading UCI household energy data…")
 def cached_data(path, modified):
-    return load_hourly_data(path)
+    return load_app_data(path)
 
 
 @st.cache_data(show_spinner="Training and evaluating the Random Forest…")
@@ -39,10 +39,12 @@ page = st.sidebar.radio("Explore", ["Overview", "Energy Forecasting", "Smart Gri
                                     "BFS Optimization", "DFS Fault Analysis", "About"])
 hourly, report = None, None
 try:
-    hourly, report = cached_data(str(DEFAULT_DATASET), DEFAULT_DATASET.stat().st_mtime_ns)
+    dataset = resolve_dataset()
+    hourly, report = cached_data(str(dataset), dataset.stat().st_mtime_ns)
 except FileNotFoundError:
-    st.warning("UCI dataset missing. Place the ZIP in this project folder and run "
-               "`python scripts/prepare_data.py`, then refresh. You can still explore the grid simulations.")
+    st.warning("UCI dataset missing. Restore data/household_hourly.csv.gz and its JSON metadata "
+               "from the repository, or place the ZIP in the local project folder and run "
+               "`python scripts/prepare_data.py`. You can still explore the grid simulations.")
 except (ValueError, OSError) as exc:
     st.error(f"Could not load dataset: {exc}")
 
@@ -55,7 +57,9 @@ if page == "Overview":
         a.metric("Usable hourly observations", f"{report['usable_hours']:,}")
         b.metric("Mean energy per usable hour", f"{hourly.energy_kwh.mean():.3f} kWh")
         c.metric("Hours excluded for low coverage", f"{report['excluded_hours']:,}")
-        st.success(f"Real UCI dataset loaded: {report['input_rows']:,} minute rows.")
+        st.success(f"Real UCI data loaded: {report['usable_hours']:,} usable hourly observations "
+                   f"from {report['input_rows']:,} historical minute readings.")
+        st.caption(report["representation"])
         st.write(f"Dataset period: {hourly.index.min()} to {hourly.index.max()} (source local time).")
         st.line_chart(hourly[["energy_kwh"]].tail(24 * 14), y_label="kWh per hour")
         with st.expander("Data quality and aggregation policy"):
@@ -147,6 +151,10 @@ else:
              "regression, manual BFS/DFS algorithms, Matplotlib charts, and Streamlit.")
     st.markdown("Dataset: [UCI Individual Household Electric Power Consumption]"
                 "(https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption).")
+    st.markdown("Georges Hebrail and Alice Berard (2006), "
+                "[DOI: 10.24432/C58K54](https://doi.org/10.24432/C58K54). "
+                "Data licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). "
+                "The bundled data is an hourly aggregation with the coverage policy described above.")
     st.write("Forecasts describe historical household patterns. They are not current grid measurements "
              "or dispatch advice. Calendar seasonality may generalize poorly when household behavior changes. "
              "The source timestamps have no timezone offset; no daylight-saving corrections are inferred.")
